@@ -17,6 +17,7 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -403,7 +404,7 @@ public class MainServer extends javax.swing.JFrame {
                                 sendToUser.write(userMessage[1]);
                                 sendToUser.newLine();
                                 sendToUser.flush();
-                                txaChat.append(data[0] + "-->" + userMessage[0] + ": " + userMessage[1]);
+                                txaChat.append(data[0] + "-->" + userMessage[0] + ": " + userMessage[1]+"\n");
                             } catch (Exception e) {
                                 txaChat.append("không tìm thấy user: " + userMessage[0] + "\n");
                                 e.printStackTrace();
@@ -423,10 +424,26 @@ public class MainServer extends javax.swing.JFrame {
 //                                    }
 //
 //                                }
-                            BufferedWriter ww = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
-                            ww.write(data[0] + ": " + data[1]);
-                            ww.newLine();
-                            ww.flush();
+                                Collection co  = writer.values();
+                                Iterator iit = co.iterator();
+                                while(iit.hasNext()){
+                                    try{
+                                    BufferedWriter send = (BufferedWriter) iit.next();
+                                    String mess = data[0] + ": " + data[1];
+                                    send.write(mess);
+                                    send.newLine();
+                                    send.flush();
+                                    txaChat.append(mess + "\n");
+                                    }catch(Exception e) {
+                                        e.printStackTrace();
+                                        txaInfo.append("error sent to all user");
+                                    }
+                                }
+                                
+//                            BufferedWriter ww = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
+//                            ww.write(data[0] + ": " + data[1]);
+//                            ww.newLine();
+//                            ww.flush();
                         }
 
                     }
