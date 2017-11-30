@@ -385,40 +385,50 @@ public class MainServer extends javax.swing.JFrame {
                 os = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 
                 String inMess;
-                inMess = is.readLine();
                 while (true) {
                     inMess = is.readLine();
 
+                    txaInfo.append("data in: " + inMess + "\n");
                     String data[] = inMess.split("%");
+                    txaInfo.append(data[0] + "--" + data[1] + "--" + data[2] + "\n");
                     if (data[2].equals("name")) {
                         writer.put(data[0], clientWriter);
-                        txaChat.append("Add user: "+ data[0] + "\n");
-                    } else if (data[2].equals("chat")) {
-                        if (data[1].indexOf(":") != -1) {
+                        txaChat.append("Add user: " + data[0] + "\n");
+                    }
+                    if (data[2].equals("chat")) {
+                        if (data[1].indexOf(":") != -1) { // send to one user 
                             String[] userMessage = data[1].split(":");
                             try {
                                 BufferedWriter sendToUser = (BufferedWriter) writer.get(userMessage[0]);
                                 sendToUser.write(userMessage[1]);
                                 sendToUser.newLine();
                                 sendToUser.flush();
+                                txaChat.append(data[0] + "-->" + userMessage[0] + ": " + userMessage[1]);
                             } catch (Exception e) {
-                                txaChat.append("không tìm thấy user" + userMessage[0]);
+                                txaChat.append("không tìm thấy user: " + userMessage[0] + "\n");
+                                e.printStackTrace();
                             }
 
-                        } else {
-                            Iterator it = writer.keySet().iterator();
-                            while (it.hasNext()) {
-                                try {
-                                    BufferedWriter sendToUser = (BufferedWriter) it.next();
-                                    sendToUser.write(data[0] + ": " + data[1]);
-                                    sendToUser.newLine();
-                                    sendToUser.flush();
-                                } catch(Exception e) {
-                                    txaInfo.append("error sent to all user \n");
-                                }
-
-                            }
+                        } else { // send to all user
+//                                Iterator it = writer.keySet().iterator();
+//                                while (it.hasNext()) {
+//                                    try {
+//                                        BufferedWriter sendToUser = (BufferedWriter) it.next();
+//                                        sendToUser.write(data[0] + ": " + data[1]);
+//                                        sendToUser.newLine();
+//                                        sendToUser.flush();
+//                                    } catch (Exception e) {
+//                                        txaInfo.append("error sent to all user \n");
+//                                        e.printStackTrace();
+//                                    }
+//
+//                                }
+                            BufferedWriter ww = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
+                            ww.write(data[0] + ": " + data[1]);
+                            ww.newLine();
+                            ww.flush();
                         }
+
                     }
 
                 }
