@@ -28,7 +28,7 @@ import java.util.logging.Logger;
  *
  * @author stephen
  */
-public class MainServer extends javax.swing.JFrame {
+public class OldMainServer extends javax.swing.JFrame {
 
     int mPort;
     String mStatus;
@@ -40,12 +40,13 @@ public class MainServer extends javax.swing.JFrame {
     BufferedReader is;
 //    ArrayList<BufferedWriter> lsos = new ArrayList<>();
     BufferedWriter os;
+    HashMap<String, BufferedReader> reader = new HashMap<>();
     HashMap<String, BufferedWriter> writer = new HashMap<>();
 
     /**
      * Creates new form MainServer
      */
-    public MainServer() {
+    public OldMainServer() {
         initComponents();
     }
 
@@ -258,20 +259,21 @@ public class MainServer extends javax.swing.JFrame {
                 }
             }
         } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(MainServer.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(OldMainServer.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(MainServer.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(OldMainServer.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(MainServer.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(OldMainServer.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(MainServer.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(OldMainServer.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
+        //</editor-fold>
         //</editor-fold>
 
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                new MainServer().setVisible(true);
+                new OldMainServer().setVisible(true);
 
             }
         });
@@ -350,7 +352,8 @@ public class MainServer extends javax.swing.JFrame {
                     // waiting client connect
                     Socket clientSocket = serverSocket.accept();
                     BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
-                    ClientServiceThread clientServiceThread = new ClientServiceThread(clientSocket, bufferedWriter);
+                    BufferedReader buffereaReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                    ClientServiceThread clientServiceThread = new ClientServiceThread(clientSocket, bufferedWriter, buffereaReader);
                     clientServiceThread.start();
                 }
             } catch (Exception ex) {
@@ -369,10 +372,12 @@ public class MainServer extends javax.swing.JFrame {
         Socket clientSocket;
         boolean runing = true;
         BufferedWriter clientWriter;
+        BufferedReader clientReader;
 
-        public ClientServiceThread(Socket clientSocket, BufferedWriter ClientWriter) {
+        public ClientServiceThread(Socket clientSocket, BufferedWriter ClientWriter, BufferedReader ClientReader) {
             this.clientSocket = clientSocket;
             this.clientWriter = ClientWriter;
+            this.clientReader = ClientReader;
         }
 
         @Override
@@ -385,32 +390,59 @@ public class MainServer extends javax.swing.JFrame {
                 is = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                 os = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 
+                Boolean haveName = false;
                 String inMess;
-                while (true) {
-                    inMess = is.readLine();
+                String nameUser = "";
+                while (true) { // nhận tin nhắn
+                    if(!haveName){ // nếu chưa có name nhận name bằng luồng bufferreader
+                        inMess = is.readLine();
+                        haveName = true;
+                    } else {// nếu đã có tên nhận từ luồng chứa trong hash map
+                        inMess = reader.get(nameUser).readLine();
+                    }
 
+                    
+                    // hiện info 
                     txaInfo.append("data in: " + inMess + "\n");
+                    // phân tích tin nhắn 
                     String data[] = inMess.split("%");
+                    //hiển thị nội dung chat lên khung chat 
                     txaInfo.append(data[0] + "--" + data[1] + "--" + data[2] + "\n");
-                    if (data[2].equals("name")) {
+                    if (data[2].equals("name")) {// nếu action trueyefn lên là name
+                        //đăng kí luồng đọc ghi có key là tên userr
+                        reader.put(data[0], clientReader);
                         writer.put(data[0], clientWriter);
+                        //ghi user name
+                        nameUser = data[0];
                         txaChat.append("Add user: " + data[0] + "\n");
                     }
-                    if (data[2].equals("chat")) {
+                    if (data[2].equals("chat")) { // nếu action là chat
+                        //nếu nội dung có dấu ":"
                         if (data[1].indexOf(":") != -1) { // send to one user 
+                            // phân tích nội dung tin nhắn
                             String[] userMessage = data[1].split(":");
                             try {
+                                
+                                //mở luồng ghi dữ liệu cho user có tên trước dấu ":"
                                 BufferedWriter sendToUser = (BufferedWriter) writer.get(userMessage[0]);
-                                sendToUser.write(userMessage[1]);
+                                sendToUser.write(data[0] + ": " + userMessage[1]);
                                 sendToUser.newLine();
                                 sendToUser.flush();
-                                txaChat.append(data[0] + "-->" + userMessage[0] + ": " + userMessage[1]+"\n");
+                                //mở luồng ghi dữ liệu cho chính mình 
+                                BufferedWriter senToMe = (BufferedWriter) writer.get(data[0]);
+                                senToMe.write("-->" + data[1]);
+                                senToMe.newLine();
+                                senToMe.flush();
+                                
+                                txaChat.append(data[0] + "-->" + userMessage[0] + ": " + data[0] + ": " + userMessage[1]+"\n");
                             } catch (Exception e) {
                                 txaChat.append("không tìm thấy user: " + userMessage[0] + "\n");
                                 e.printStackTrace();
                             }
 
-                        } else { // send to all user
+                        } 
+                        //nếu trong cấu trúc tin nhắn không có dấu ":"
+                        else { // send to all user
 //                                Iterator it = writer.keySet().iterator();
 //                                while (it.hasNext()) {
 //                                    try {
@@ -424,11 +456,15 @@ public class MainServer extends javax.swing.JFrame {
 //                                    }
 //
 //                                }
+
+                                //duyệt mảng luồng writer và gửi cho all user
                                 Collection co  = writer.values();
                                 Iterator iit = co.iterator();
                                 while(iit.hasNext()){
                                     try{
+                                    //lấy luồng ra và ghi cho user
                                     BufferedWriter send = (BufferedWriter) iit.next();
+                                    //khởi tạo tin nhắn 
                                     String mess = data[0] + ": " + data[1];
                                     send.write(mess);
                                     send.newLine();
@@ -447,10 +483,10 @@ public class MainServer extends javax.swing.JFrame {
                         }
 
                     }
-
+ 
                 }
             } catch (IOException ex) {
-                Logger.getLogger(MainServer.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(OldMainServer.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
 
