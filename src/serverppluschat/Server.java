@@ -640,6 +640,7 @@ public class Server extends javax.swing.JFrame {
                 // get local host adress
                 String serverHost = InetAddress.getLocalHost().getHostAddress();
 
+                //get host
                 for (final Enumeration< NetworkInterface> interfaces
                         = NetworkInterface.getNetworkInterfaces();
                         interfaces.hasMoreElements();) {
@@ -657,16 +658,6 @@ public class Server extends javax.swing.JFrame {
                         if (!(inet_addr instanceof Inet4Address)) {
                             continue;
                         }
-
-                        System.out.println(
-                                "  address: " + inet_addr.getHostAddress()
-                                + "/" + addr.getNetworkPrefixLength()
-                        );
-
-                        System.out.println(
-                                "  broadcast address: "
-                                + addr.getBroadcast().getHostAddress()
-                        );
 
                         serverHost = inet_addr.getHostAddress();
                     }
